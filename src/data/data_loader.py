@@ -202,10 +202,14 @@ class SECDataLoader:
         """
         try:
             # Extract accession number from the filing link
-            acc_no_match = re.search(r'accession_number=([^&]+)', filing_link)
-            if not acc_no_match:
-                logger.error(f"Could not extract accession number from {filing_link}")
-                return None
+            # Extract accession number from the filing link
+                acc_no_match = re.search(r'/(\d+-\d+-\d+)(-index)?\.', filing_link)
+                if not acc_no_match:
+                # Try alternative pattern for older SEC URLs
+                acc_no_match = re.search(r'/(\d+/\d+)/', filing_link)
+                if not acc_no_match:
+                    logger.error(f"Could not extract accession number from {filing_link}")
+                    return None
             
             acc_no = acc_no_match.group(1)
             acc_no_clean = acc_no.replace('-', '')
