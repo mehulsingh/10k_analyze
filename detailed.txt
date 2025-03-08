@@ -1,0 +1,252 @@
+# 10-K Analysis Toolkit
+
+A comprehensive toolkit for extracting, analyzing, and visualizing data from SEC 10-K filings.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+## Overview
+
+The 10-K Analysis Toolkit provides a suite of tools for working with SEC 10-K filings, allowing users to:
+
+- Download 10-K filings from the SEC EDGAR database
+- Extract and preprocess text and financial data
+- Perform financial analysis on key metrics
+- Analyze text content using NLP techniques
+- Conduct sentiment analysis on management discussions
+- Generate insightful visualizations and dashboards
+- Compare performance across companies and time periods
+
+This toolkit is designed for financial analysts, researchers, investors, and data scientists interested in extracting insights from corporate financial disclosures.
+
+## Features
+
+### Data Acquisition
+- Direct downloading of 10-K filings from SEC EDGAR
+- Support for multiple companies and filing years
+- Local caching to prevent redundant downloads
+
+### Document Processing
+- Extraction of filing sections (Risk Factors, MD&A, Financial Statements, etc.)
+- Text cleaning and preprocessing for analysis
+- Extraction of tables and financial data
+
+### Financial Analysis
+- Extraction of key financial metrics (Revenue, Net Income, etc.)
+- Calculation of financial ratios and growth rates
+- Comparative analysis across companies and time periods
+
+### Text Analysis
+- NLP-based analysis of narrative sections
+- Topic modeling to identify key themes
+- Term frequency analysis
+- Word clouds and text visualizations
+
+### Sentiment Analysis
+- Sentiment scoring for management discussions
+- Tone analysis using financial domain-specific lexicons
+- Tracking sentiment changes over time
+
+### Visualization
+- Interactive time series plots
+- Comparative bar charts and heatmaps
+- Correlation analysis
+- Sentiment and topic visualization
+- Integrated dashboards for comprehensive analysis
+
+## Installation
+
+### Prerequisites
+- Python 3.8 or higher
+- pip (Python package installer)
+
+### Installing from PyPI
+```bash
+pip install tenk-analysis-toolkit
+```
+
+### Installing from Source
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/10k-analysis-toolkit.git
+cd 10k-analysis-toolkit
+
+# Create and activate a virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install the package and dependencies
+pip install -e .
+```
+
+## Quick Start
+
+### Command Line Interface
+
+The toolkit provides a command-line interface for easy use:
+
+```bash
+# Download 10-K filings for Apple and Microsoft for years 2020-2022
+tenk download --tickers AAPL MSFT --years 2020 2021 2022 --output data/filings.pkl
+
+# Preprocess the downloaded filings
+tenk preprocess --input data/filings.pkl --output data/processed_filings.pkl --extract-sections --clean-text
+
+# Perform financial analysis
+tenk financial-analysis --input data/processed_filings.pkl --output data/financial_results.pkl
+
+# Perform sentiment analysis on MD&A sections
+tenk sentiment-analysis --input data/processed_filings.pkl --output data/sentiment_results.pkl --sections item_7
+
+# Generate visualizations
+tenk visualize --financial data/financial_results.pkl --sentiment data/sentiment_results.pkl --output-dir visualizations
+
+# Or run the complete pipeline in one command
+tenk pipeline --tickers AAPL MSFT --years 2020 2021 2022 --output-dir results
+```
+
+### Python API
+
+You can also use the toolkit programmatically:
+
+```python
+from tenk_toolkit.data import SECDataLoader, FilingPreprocessor
+from tenk_toolkit.analysis import FinancialAnalyzer, TextAnalyzer, SentimentAnalyzer
+from tenk_toolkit.visualization import create_interactive_dashboard
+
+# Download filings
+loader = SECDataLoader()
+filings = loader.load_filings(['AAPL', 'MSFT'], years=[2020, 2021, 2022])
+
+# Preprocess filings
+preprocessor = FilingPreprocessor()
+processed_filings = preprocessor.process_filings(filings, extract_sections=True)
+
+# Analyze financial metrics
+financial_analyzer = FinancialAnalyzer()
+financial_metrics = financial_analyzer.analyze_filings(processed_filings)
+
+# Analyze sentiment
+sentiment_analyzer = SentimentAnalyzer()
+sentiment_results = sentiment_analyzer.analyze_filings(processed_filings, sections=['item_7'])
+
+# Create a dashboard
+dashboard = create_interactive_dashboard(financial_metrics, sentiment_results)
+dashboard.write_html("dashboard.html")
+```
+
+## Documentation
+
+### Modules
+
+- **data**: Tools for downloading and preprocessing 10-K filings
+  - `SECDataLoader`: Download filings from SEC EDGAR
+  - `FilingPreprocessor`: Extract sections and preprocess text
+
+- **analysis**: Tools for analyzing 10-K filing content
+  - `FinancialAnalyzer`: Extract and analyze financial metrics
+  - `TextAnalyzer`: Analyze text content using NLP
+  - `SentimentAnalyzer`: Analyze sentiment in text sections
+
+- **visualization**: Tools for creating visualizations
+  - `basic_plots`: Standard matplotlib/seaborn visualizations
+  - `advanced_plots`: Interactive Plotly visualizations
+
+- **utils**: Utility functions and helpers
+
+### Jupyter Notebooks
+
+Example notebooks are provided in the `notebooks/` directory:
+
+1. `1_data_extraction.ipynb`: Downloading and storing 10-K filings
+2. `2_data_preprocessing.ipynb`: Extracting and preprocessing filing sections
+3. `3_exploratory_analysis.ipynb`: Basic exploration of 10-K data
+4. `4_text_analysis.ipynb`: NLP analysis of text content
+5. `5_financial_analysis.ipynb`: Financial metrics extraction and analysis
+6. `6_visualizations.ipynb`: Creating visualizations and dashboards
+
+## Examples
+
+### Financial Analysis
+
+```python
+import matplotlib.pyplot as plt
+from tenk_toolkit.data import SECDataLoader
+from tenk_toolkit.analysis import FinancialAnalyzer
+from tenk_toolkit.visualization import plot_time_series
+
+# Load filings for tech companies
+loader = SECDataLoader()
+filings = loader.load_filings(['AAPL', 'MSFT', 'GOOGL'], years=[2018, 2019, 2020, 2021, 2022])
+
+# Extract financial metrics
+analyzer = FinancialAnalyzer()
+metrics = analyzer.analyze_filings(filings)
+
+# Plot revenue over time
+fig, ax = plot_time_series(
+    metrics,
+    date_column='filing_date',
+    value_column='revenue',
+    company_column='ticker',
+    title='Revenue Comparison (2018-2022)'
+)
+plt.show()
+```
+
+### Sentiment Analysis
+
+```python
+from tenk_toolkit.analysis import SentimentAnalyzer
+from tenk_toolkit.visualization import plot_sentiment_analysis
+
+# Analyze sentiment in MD&A sections
+sentiment_analyzer = SentimentAnalyzer()
+sentiment_results = sentiment_analyzer.analyze_filings(
+    filings,
+    sections=['item_7']  # MD&A section
+)
+
+# Plot sentiment over time
+fig, ax = plot_sentiment_analysis(
+    sentiment_results,
+    date_column='filing_date',
+    sentiment_column='lexicon_net_score',
+    company_column='ticker',
+    title='MD&A Sentiment Trends (2018-2022)'
+)
+plt.show()
+```
+
+### Interactive Dashboard
+
+```python
+from tenk_toolkit.visualization import create_interactive_dashboard
+
+# Create a dashboard combining financial and sentiment data
+dashboard = create_interactive_dashboard(metrics, sentiment_results)
+
+# Save to HTML file
+dashboard.write_html("10k_analysis_dashboard.html")
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgements
+
+- [SEC EDGAR](https://www.sec.gov/edgar.shtml) for providing access to filings
+- [NLTK](https://www.nltk.org/) for natural language processing
+- [Loughran-McDonald Financial Sentiment Dictionary](https://sraf.nd.edu/loughranmcdonald-master-dictionary/) for financial sentiment analysis
+- [Plotly](https://plotly.com/) for interactive visualizations
