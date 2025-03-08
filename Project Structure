@@ -1,0 +1,40 @@
+10k-analysis-toolkit/
+├── LICENSE
+├── README.md
+├── requirements.txt
+├── setup.py
+├── .gitignore
+├── src/
+│   ├── __init__.py
+│   ├── data/
+│   │   ├── __init__.py
+│   │   ├── data_loader.py
+│   │   └── data_preprocessor.py
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   ├── text_analysis.py
+│   │   ├── financial_analysis.py
+│   │   └── sentiment_analysis.py
+│   ├── visualization/
+│   │   ├── __init__.py
+│   │   ├── basic_plots.py
+│   │   └── advanced_plots.py
+│   └── utils/
+│       ├── __init__.py
+│       └── helpers.py
+├── notebooks/
+│   ├── 1_data_extraction.ipynb
+│   ├── 2_data_preprocessing.ipynb
+│   ├── 3_exploratory_analysis.ipynb
+│   ├── 4_text_analysis.ipynb
+│   ├── 5_financial_analysis.ipynb
+│   └── 6_visualizations.ipynb
+├── tests/
+│   ├── __init__.py
+│   ├── test_data_loader.py
+│   ├── test_analysis.py
+│   └── test_visualization.py
+└── docs/
+    ├── getting_started.md
+    ├── api_reference.md
+    └── examples.md
