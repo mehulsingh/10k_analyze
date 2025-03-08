@@ -168,11 +168,19 @@ class SECDataLoader:
                         if filing_link_element:
                             filing_link = 'https://www.sec.gov' + filing_link_element['href']
                             
+                            # Extract the accession number from the URL if possible
+                            acc_match = re.search(r'accession_number=([^&]+)', filing_link)
+                            if not acc_match:
+                                acc_match = re.search(r'/(\d+-\d+-\d+)', filing_link)
+                            
+                            acc_no = acc_match.group(1) if acc_match else None
+                            
                             links.append({
                                 'cik': cik,
                                 'filing_type': filing_type_text,
                                 'filing_date': filing_date,
-                                'filing_link': filing_link
+                                'filing_link': filing_link,
+                                'accession_number': acc_no  # Add this directly to the links data
                             })
                     except ValueError:
                         logger.warning(f"Could not parse date: {filing_date_text}")
@@ -201,18 +209,36 @@ class SECDataLoader:
             Dictionary containing filing content and metadata
         """
         try:
-            # Extract accession number from the filing link
-            # Extract accession number from the filing link
-                acc_no_match = re.search(r'/(\d+-\d+-\d+)(-index)?\.', filing_link)
-                if not acc_no_match:
-                # Try alternative pattern for older SEC URLs
-                acc_no_match = re.search(r'/(\d+/\d+)/', filing_link)
-                if not acc_no_match:
-                    logger.error(f"Could not extract accession number from {filing_link}")
-                    return None
+            # Extract accession number from the filing link using multiple patterns
+            # First try the URL parameter pattern
+            acc_no_match = re.search(r'accession_number=([^&]+)', filing_link)
+            
+            # If that fails, try extracting from the URL path using different patterns
+            if not acc_no_match:
+                # Try to match the format /data/CIK/ACCESSION/ACCESSION-index.htm
+                acc_no_match = re.search(r'/(\d+/\d+)(?:-index)?\.htm', filing_link)
+            
+            if not acc_no_match:
+                # Try another pattern for accession numbers in the URL path
+                acc_no_match = re.search(r'/(\d+-\d+-\d+)(?:-index)?\.htm', filing_link)
+                
+            if not acc_no_match:
+                # Last resort - try to find anything that looks like an accession number
+                acc_no_match = re.search(r'(\d+-\d+-\d+)', filing_link)
+                
+            if not acc_no_match:
+                logger.error(f"Could not extract accession number from {filing_link}")
+                # Return a minimal dictionary instead of None to avoid downstream errors
+                return {
+                    'accession_number': 'unknown-' + str(int(time.time())),
+                    'company_name': None,
+                    'fiscal_year_end': None,
+                    'filing_html': '<html>Failed to retrieve content</html>'
+                }
             
             acc_no = acc_no_match.group(1)
-            acc_no_clean = acc_no.replace('-', '')
+            # Clean the accession number by removing dashes and slashes
+            acc_no_clean = acc_no.replace('-', '').replace('/', '')
             
             # Cache file path
             cache_file = os.path.join(self.cache_dir, f"{acc_no_clean}.html")
@@ -229,7 +255,12 @@ class SECDataLoader:
                 
                 if response.status_code != 200:
                     logger.error(f"Failed to get filing detail page {filing_link} - Status: {response.status_code}")
-                    return None
+                    return {
+                        'accession_number': acc_no,
+                        'company_name': None,
+                        'fiscal_year_end': None,
+                        'filing_html': '<html>Failed to retrieve content</html>'
+                    }
                 
                 # Parse the detail page to find the actual filing document
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -246,18 +277,38 @@ class SECDataLoader:
                                 filing_document = 'https://www.sec.gov' + doc_link['href']
                                 break
                 
+                # If we can't find the document through the normal structure, try a fallback method
+                if not filing_document:
+                    # Look for any link that might contain the 10-K document
+                    for link in soup.find_all('a', href=True):
+                        href = link['href']
+                        if '10-K' in link.text or '.htm' in href:
+                            filing_document = 'https://www.sec.gov' + href if href.startswith('/') else href
+                            break
+                
                 if not filing_document:
                     logger.error(f"Could not find 10-K document link in {filing_link}")
-                    return None
+                    return {
+                        'accession_number': acc_no,
+                        'company_name': None,
+                        'fiscal_year_end': None,
+                        'filing_html': '<html>Failed to find 10-K document</html>'
+                    }
                 
                 # Get the actual filing content
-                response = requests.get(filing_document, headers=headers)
+                logger.info(f"Fetching document from {filing_document}")
+                doc_response = requests.get(filing_document, headers=headers)
                 
-                if response.status_code != 200:
-                    logger.error(f"Failed to get filing document {filing_document} - Status: {response.status_code}")
-                    return None
+                if doc_response.status_code != 200:
+                    logger.error(f"Failed to get filing document {filing_document} - Status: {doc_response.status_code}")
+                    return {
+                        'accession_number': acc_no,
+                        'company_name': None,
+                        'fiscal_year_end': None,
+                        'filing_html': '<html>Failed to download document</html>'
+                    }
                 
-                content = response.text
+                content = doc_response.text
                 
                 # Cache the content
                 with open(cache_file, 'w', encoding='utf-8', errors='replace') as f:
@@ -292,7 +343,13 @@ class SECDataLoader:
             
         except Exception as e:
             logger.error(f"Error getting filing content for {filing_link}: {str(e)}")
-            return None
+            # Return a minimal dictionary instead of None to ensure filing_html exists
+            return {
+                'accession_number': 'error-' + str(int(time.time())),
+                'company_name': None,
+                'fiscal_year_end': None,
+                'filing_html': f'<html>Error retrieving content: {str(e)}</html>'
+            }
     
     def load_filings(self, tickers, years=None, filing_type='10-K'):
         """
@@ -367,6 +424,12 @@ class SECDataLoader:
                     
                     all_filings.append(filing_data)
         
+        # Log the number of filings found
+        if len(all_filings) == 0:
+            logger.error(f"No filings were successfully loaded. Check the log for errors.")
+        else:
+            logger.info(f"Successfully loaded {len(all_filings)} filings.")
+        
         # Convert to DataFrame
         df_filings = pd.DataFrame(all_filings)
         
@@ -378,6 +441,9 @@ class SECDataLoader:
             # Format columns
             if 'filing_date' in df_filings.columns:
                 df_filings['filing_date'] = pd.to_datetime(df_filings['filing_date'])
+            
+            # Log the columns for debugging
+            logger.info(f"DataFrame columns: {df_filings.columns.tolist()}")
         
         return df_filings
 
